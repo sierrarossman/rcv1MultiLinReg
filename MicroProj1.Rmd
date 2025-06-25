@@ -1,0 +1,121 @@
+---
+title: "Micro Proj 1"
+author: "Sierra Rossman"
+date: "`r Sys.Date()`"
+output: pdf_document
+---
+Research question: To what extent do country and year predict child RCV1 (rubella) vaccine coverage in Eastern Europe & Central Asia from 1980 to 2023?
+
+Outcome variable: mean
+Predictors: year_id, location_name
+filter by: vaccine_name = rcv1, location_id = "Russia", "Ukraine", "Belarus", "Georgia", "Armenia", 
+  "Kazakhstan", "Kyrgyzstan", "Uzbekistan", "Moldova", or "Azerbaijan".
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(dplyr)
+```
+
+#Data Cleaning/Preparation
+```{r}
+#Importing the dataset
+data <- read.csv("IHME_GBD_2023_VACC_1980_2030_ESTIMATES_Y2025M04D25.CSV")
+#Filtering the dataset to my research question
+rcv1_data <- data %>% filter(vaccine_name == "RCV1")
+eecca_countries <- c(
+  "Russia", "Ukraine", "Belarus", "Georgia", "Armenia", 
+  "Kazakhstan", "Kyrgyzstan", "Uzbekistan", "Moldova", "Azerbaijan"
+)
+rcv1_data <- rcv1_data %>% filter(location_name %in% eecca_countries)
+#Looking at the dataset to ensure everything worked as intended
+head(rcv1_data)
+```
+Cleaning:
+```{r}
+#Getting the total number of missing values
+sum(is.na(rcv1_data)) #There were none so handling wasn't necessary
+
+#Reformatting vaccine_name and location_name
+rcv1_data$location_name <- as.factor(rcv1_data$location_name)
+#Getting summary statistics
+summary(rcv1_data)
+#Getting the standard deviation for the mean variable which is the 
+#only continuous variable that makes sense to get a standard deviation stat for.
+sd(rcv1_data$mean)
+#Showing the result of the data preparation steps
+head(rcv1_data)
+```
+
+#Multiple Linear Regression
+Null Hypotheses:
+There is no relationship between year and RCV1 vaccine coverage
+There is no difference in RCV1 vaccine coverage between countries, holding year constant
+Alternative Hypotheses:
+There is a relationship between year and RCV1 vaccine coverage
+At least one country differs significantly in coverage compared to the reference country
+```{r}
+#First looking at the distribution of the mean variable
+#Noted that there are a lot of 0's which may cause problems with the assumptions
+hist(rcv1_data$mean)
+```
+
+```{r}
+#Fitting the first model
+model <- lm(mean ~ year_id + location_name, data = rcv1_data)
+#Outputting the results from the model
+summary(model)
+```
+
+```{r}
+#Checking the assumptions
+#Plot 1: Residuals vs Fitted
+plot(model, which = 1)
+#Plot 2: Normal Q-Q Plot
+plot(model, which = 2)
+#Plot 3: Scale-Location Plot Spread vs fitted homoscedasticity or equal variance 
+plot(model, which = 3)
+#Plot 4: Residuals vs leverage potential influential outliers
+plot(model, which = 4)
+#Aside from the Q-Q plot, all of the assumptions fail
+```
+
+```{r}
+#Attempt to transform the mean variable to satisfy the assumptions
+sqrt_y <- sqrt(rcv1_data$mean)
+#Fitting the second model based on the transformed response
+model2 <- lm(sqrt_y ~ year_id + location_name, data = rcv1_data)
+```
+
+```{r}
+#Seeing how the new model performed - increase in R-squared noted
+summary(model2)
+```
+
+```{r}
+#Plot 1: Residuals vs Fitted
+plot(model2, which = 1)
+#Plot 2: Normal Q-Q Plot
+plot(model2, which = 2)
+#Plot 3: Scale-Location Plot Spread vs fitted homoscedasticity or equal variance 
+plot(model2, which = 3)
+#Plot 4: Residuals vs leverage potential influenctial outliers
+plot(model2, which = 4)
+#Again, aside from the Q-Q plot, the assumptions fail so I will infer/conclude with caution.
+```
+
+#Inferences
+
+Mean is the mean vaccine coverage in children, specifically filtered for the Eastern European and Central Asia regions and also filtered for the RCV1 vaccine. 
+Year is the year the data was recorded, from 1980 to 2023.
+Country is the country the data was recorded from.
+An increase in year is correlated with an increase of 0.0301, holding country constant, with a p-value of <2e-16. 
+Belarus has a statistically significant (p=0.0061) higher RCV1 vaccine coverage than the baseline country (0.1348). 
+Considering a p-value threshold of 0.05, those are the two statistically significant results. 
+Increasing the p-value threshold < 0.1, Georgia has a statistically significant (p=0.0776) lower RCV1 vaccine coverage than the baseline country (-0.08652).
+R-squared is equal to 0.7477 which tells us 74.77% of the variance is explained by year and country which indicates a strong overall fit.
+The f-statistic is < 2.2e-16, proving the model effective and statistically significant.
+We can therefore reject our null hypotheses with alpha < 0.05.
+
+#Conclusions
+
+Mean RCV1 vaccine coverage in children has increased within the Eastern European and Central Asia regions over the years. Belarus specifically has seen a significantly increased mean coverage of the RCV1 vaccine compared to the reference country. Alternatively, Georgia had a significantly lower mean coverage of the RCV1 vaccine compared to the reference country. The overall increase of RCV1 vaccine coverage in children is encouraging for public health efforts, but more research can be done in Georgia to understand why the coverage is lower there.
