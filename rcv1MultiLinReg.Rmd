@@ -1,5 +1,5 @@
 ---
-title: "Micro Proj 1"
+title: "RCV1 Multiple Linear Regression"
 author: "Sierra Rossman"
 date: "`r Sys.Date()`"
 output: pdf_document
